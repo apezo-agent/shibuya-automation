@@ -1,107 +1,60 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shibuya Content Automation</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    h1 { color: white; text-align: center; margin-bottom: 10px; font-size: 2.5em; }
-    .subtitle { color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 30px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-    .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .card h2 { color: #667eea; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .card h3 { color: #333; margin: 15px 0 10px 0; font-size: 0.95em; }
-    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; font-size: 1em; }
-    button { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: transform 0.2s; }
-    button:hover { transform: translateY(-2px); }
-    .tags { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
-    .tag { background: #f0f0f0; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; color: #333; }
-    .error { background: #fee; padding: 12px; border-radius: 6px; color: #c33; margin-bottom: 15px; border-left: 4px solid #c33; }
-    .success { background: #efe; padding: 12px; border-radius: 6px; color: #3c3; margin-bottom: 15px; border-left: 4px solid #3c3; }
-    .stat { background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 10px; }
-    .stat-label { color: #667eea; font-weight: bold; margin-bottom: 5px; }
-    .stat-value { color: #333; font-size: 1.3em; }
-    .full-width { grid-column: 1 / -1; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>🍜 Shibuya Content Automation</h1>
-    <p class="subtitle">Detecta tendencias · Genera contenido · Verifica brand · Publica automáticamente</p>
+async function generateContent() {
+  const trend = document.getElementById('trendInput').value;
+  const errorDiv = document.getElementById('error');
+  
+  errorDiv.innerHTML = '';
+  
+  try {
+    const response = await fetch('/.netlify/functions/main-orchestrator', {
+      method: 'POST',
+      body: JSON.stringify({ trend: trend })
+    });
     
-    <div class="grid">
-      <div class="card">
-        <h2>⚙️ Panel de Control</h2>
-        <h3>Tendencia Detectada</h3>
-        <input type="text" id="trendInput" placeholder="Ej: comida de fusión coreana" value="comida de fusión coreana">
-        <div class="tags">
-          <span class="tag">Fusión coreana</span>
-          <span class="tag">Bebidas amazónicas</span>
-          <span class="tag">Local Pucallpa</span>
-          <span class="tag">Sostenibilidad</span>
-        </div>
-        <button onclick="generateContent()">🚀 Generar Contenido</button>
-        <div id="error"></div>
-      </div>
-
-      <div class="card">
-        <h2>📊 Estado</h2>
-        <div class="stat">
-          <div class="stat-label">Última ejecución</div>
-          <div class="stat-value" id="lastRun">12/8/2026, 11:19:26 p. m.</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Próxima ejecución automática</div>
-          <div class="stat-value">8:00 AM (diariamente)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Contenidos generados</div>
-          <div class="stat-value" id="contentCount">0</div>
-        </div>
-      </div>
-
-      <div class="card full-width">
-        <h2>📚 Historial de Contenidos</h2>
-        <div id="history" style="color: #999; text-align: center; padding: 20px;">Esperando primer contenido...</div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    async function generateContent() {
-      const trend = document.getElementById('trendInput').value;
-      const errorDiv = document.getElementById('error');
+    const data = await response.json();
+    
+    if (data.success) {
+      // GUARDAR en el navegador
+      let history = JSON.parse(localStorage.getItem('shibuyaHistory') || '[]');
+      history.push({
+        fecha: new Date().toLocaleDateString('es-PE'),
+        hora: new Date().toLocaleTimeString('es-PE'),
+        tendencia: trend,
+        contenido: data.content,
+        score: data.score
+      });
+      localStorage.setItem('shibuyaHistory', JSON.stringify(history));
       
-      errorDiv.innerHTML = '';
+      // MOSTRAR
+      errorDiv.innerHTML = '<div class="success">✅ Contenido generado y guardado</div>';
+      document.getElementById('lastRun').textContent = new Date().toLocaleString('es-PE');
+      document.getElementById('contentCount').textContent = history.length;
       
-      try {
-        console.log('Calling function with trend:', trend);
-        const response = await fetch('/.netlify/functions/main-orchestrator', {
-          method: 'POST',
-          body: JSON.stringify({ trend: trend })
-        });
-        
-        console.log('Response status:', response.status);
-        const text = await response.text();
-        console.log('Response text:', text);
-        
-        const data = JSON.parse(text);
-        console.log('Parsed data:', data);
-        
-        if (data.success) {
-          errorDiv.innerHTML = '<div class="success">✅ Contenido generado exitosamente</div>';
-          document.getElementById('lastRun').textContent = new Date().toLocaleString('es-PE');
-          const count = parseInt(document.getElementById('contentCount').textContent) || 0;
-          document.getElementById('contentCount').textContent = count + 1;
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        errorDiv.innerHTML = '<div class="error">Error de conexión: ' + error.message + '</div>';
-      }
+      // MOSTRAR HISTORIAL
+      updateHistory();
     }
-  </script>
-</body>
-</html>
+  } catch (error) {
+    errorDiv.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+  }
+}
+
+function updateHistory() {
+  let history = JSON.parse(localStorage.getItem('shibuyaHistory') || '[]');
+  const historyDiv = document.getElementById('history');
+  
+  if (history.length === 0) {
+    historyDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Esperando primer contenido...</p>';
+    return;
+  }
+  
+  historyDiv.innerHTML = history.map(item => `
+    <div style="background: #f5f5f5; padding: 15px; margin-bottom: 10px; border-radius: 6px;">
+      <strong>${item.fecha} ${item.hora}</strong><br>
+      <em>Tendencia:</em> ${item.tendencia}<br>
+      <em>Contenido:</em> ${item.contenido}<br>
+      <em>Score:</em> ${item.score}
+    </div>
+  `).reverse().join('');
+}
+
+// MOSTRAR HISTORIAL AL CARGAR
+document.addEventListener('DOMContentLoaded', updateHistory);
